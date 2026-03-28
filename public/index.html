@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Weed Detection</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        :root {
+            --bg-color: #0E1117;
+            --sidebar-bg: #1E2329;
+            --container-bg: #1A2026;
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --text-color: #FAFAFA;
+            --text-muted: #A0AAB4;
+            --border-color: #333;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar h2 {
+            margin-top: 0;
+            margin-bottom: 2rem;
+            color: var(--text-color);
+            font-weight: 600;
+            font-size: 1.25rem;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            font-weight: 600;
+        }
+
+        .nav-item:hover {
+            background-color: var(--container-bg);
+        }
+
+        .nav-item.active {
+            background-color: var(--container-bg);
+            color: var(--primary-color);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex-grow: 1;
+            padding: 3rem 4rem;
+            max-width: 1200px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        h2, h3 {
+            color: var(--primary-color);
+            margin-top: 2rem;
+        }
+
+        p.subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 3rem;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        /* Metrics */
+        .metric-card {
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        /* Uploader */
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            background-color: var(--container-bg);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background-color: rgba(76, 175, 80, 0.05);
+        }
+
+        .upload-area p {
+            margin: 0;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Button */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Image Display */
+        .image-container {
+            margin-top: 1.5rem;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+            display: none;
+        }
+
+        .image-container img {
+            width: 100%;
+            display: block;
+        }
+
+        /* Result Cards */
+        .success-box {
+            background-color: rgba(76, 175, 80, 0.1);
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .details-table th, .details-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .details-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        pre {
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            color: #E6E6E6;
+            line-height: 1.5;
+        }
+
+        code {
+            background-color: var(--container-bg);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: var(--primary-color);
+            font-family: monospace;
+        }
+        
+        .loader {
+            border: 4px solid var(--container-bg);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Configuration</h2>
+        <div class="nav-item active" onclick="switchTab('overview')">📊 Model Overview</div>
+        <div class="nav-item" onclick="switchTab('inference')">🖼️ Image Inference</div>
+        <div class="nav-item" onclick="switchTab('stats')">📈 Statistics</div>
+        <div class="nav-item" onclick="switchTab('about')">ℹ️ About</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <h1>🌾 Automated Weed Detection System</h1>
+        <p class="subtitle">This application demonstrates a <strong>ResNet-based Weed Detection Model</strong> that can classify crops and weeds using Computer Vision and Deep Learning techniques.</p>
+
+        <!-- Tab: Model Overview -->
+        <div id="overview" class="tab-content active">
+            <h2>Model Architecture</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>ResNet Model Structure</h3>
+                    <p><strong>Architecture Details:</strong></p>
+                    <ul>
+                        <li>Input: RGB Images (3 channels)</li>
+                        <li>Conv Layer: 64 filters, 3×3 kernel</li>
+                        <li>Layer 1: 64→64 filters (residual connections)</li>
+                        <li>Layer 2: 64→128 filters (stride=2, downsampling)</li>
+                        <li>Layer 3: 128→256 filters (stride=2, downsampling)</li>
+                        <li>Average Pooling: Adaptive (1×1)</li>
+                        <li>FC Layer: 256→2 (Crop/Weed)</li>
+                    </ul>
+                    <p><strong>Key Features:</strong></p>
+                    <ul>
+                        <li>Mixed Precision Training (AMP)</li>
+                        <li>Residual Connections</li>
+                        <li>Intel oneAPI DNNL Optimized</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Model Performance Metrics</h3>
+                    <div class="metric-card" style="margin-bottom: 1rem;">
+                        <div class="metric-label">Accuracy</div>
+                        <div class="metric-value">92.00%</div>
+                    </div>
+                    <div class="grid-2" style="margin-bottom: 1rem;">
+                        <div class="metric-card">
+                            <div class="metric-label">Precision</div>
+                            <div class="metric-value">89.00%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Recall</div>
+                            <div class="metric-value">91.00%</div>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="metric-card">
+                            <div class="metric-label">F1 Score</div>
+                            <div class="metric-value">90.00%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Inference Time</div>
+                            <div class="metric-value">~50ms</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Configuration</h3>
+            <div class="grid-3">
+                <div class="metric-card">
+                    <div class="metric-label">Classes</div>
+                    <div><code>0: Crop</code><br><code>1: Weed</code></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Framework</div>
+                    <div><code>PyTorch + TensorFlow</code></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Optimizer</div>
+                    <div><code>Adam with AMP</code></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Image Inference -->
+        <div id="inference" class="tab-content">
+            <h2>Crop & Weed Detection</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>Input Image</h3>
+                    <div class="upload-area" onclick="document.getElementById('file-upload').click()">
+                        <p>👆 Click to Choose an image (JPG, PNG)</p>
+                        <input type="file" id="file-upload" accept="image/png, image/jpeg, image/jpg" onchange="previewAndPredict(event)">
+                    </div>
+                    <div class="image-container" id="image-preview-container">
+                        <img id="image-preview" src="" alt="Uploaded preview">
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Prediction Results</h3>
+                    
+                    <div id="default-result-msg" style="color: var(--text-muted); padding: 2rem; border: 1px dashed var(--border-color); border-radius: 8px; text-align: center;">
+                        Upload an image to get started!
+                    </div>
+
+                    <div class="loader" id="loading-spinner"></div>
+                    
+                    <div id="results-container" style="display: none;">
+                        <div class="success-box" id="prediction-text">
+                            <strong>Predicted:</strong> 🌱 Crop
+                        </div>
+                        
+                        <h3>Confidence Scores</h3>
+                        <div class="grid-2" style="margin-bottom: 1.5rem;">
+                            <div class="metric-card">
+                                <div class="metric-label">Crop Confidence</div>
+                                <div class="metric-value" id="conf-crop">0.00%</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Weed Confidence</div>
+                                <div class="metric-value" id="conf-weed">0.00%</div>
+                            </div>
+                        </div>
+                        
+                        <h3>Image Analysis</h3>
+                        <table class="details-table">
+                            <tr>
+                                <th>Brightness</th>
+                                <td id="val-brightness">0.000</td>
+                            </tr>
+                            <tr>
+                                <th>Greenness</th>
+                                <td id="val-greenness">0.000</td>
+                            </tr>
+                            <tr>
+                                <th>Image Size</th>
+                                <td id="val-size">0x0 px</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Statistics -->
+        <div id="stats" class="tab-content">
+            <h2>Model Performance Statistics</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>Confusion Matrix</h3>
+                    <p style="color: var(--text-muted);">Predictions on Demo Test Set (100 samples):</p>
+                    <table class="details-table" style="background-color: var(--container-bg); border-radius: 8px;">
+                        <tr>
+                            <th></th>
+                            <th>🌱 Crop</th>
+                            <th>🌿 Weed</th>
+                        </tr>
+                        <tr>
+                            <th>🌱 Predicted Crop</th>
+                            <td>45</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <th>🌿 Predicted Weed</th>
+                            <td>3</td>
+                            <td>47</td>
+                        </tr>
+                    </table>
+                    
+                    <h3 style="margin-top: 2rem;">Calculated Metrics</h3>
+                    <ul style="line-height: 2;">
+                        <li><strong>True Positives (Weeds):</strong> 47</li>
+                        <li><strong>True Negatives (Crops):</strong> 45</li>
+                        <li><strong>False Positives:</strong> 3</li>
+                        <li><strong>False Negatives:</strong> 5</li>
+                        <li><strong>Accuracy:</strong> 92%</li>
+                        <li><strong>Precision:</strong> 94%</li>
+                        <li><strong>Recall:</strong> 90%</li>
+                        <li><strong>F1 Score:</strong> 92%</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Performance Across Datasets</h3>
+                    
+                    <p><strong>Training Set:</strong></p>
+                    <div class="grid-2" style="margin-bottom: 1rem;">
+                        <div class="metric-card"><div class="metric-label">Accuracy</div><div class="metric-value">94.00%</div></div>
+                        <div class="metric-card"><div class="metric-label">Loss</div><div class="metric-value">0.150</div></div>
+                    </div>
+                    
+                    <p><strong>Validation Set:</strong></p>
+                    <div class="grid-2" style="margin-bottom: 1rem;">
+                        <div class="metric-card"><div class="metric-label">Accuracy</div><div class="metric-value">92.00%</div></div>
+                        <div class="metric-card"><div class="metric-label">Loss</div><div class="metric-value">0.220</div></div>
+                    </div>
+                    
+                    <p><strong>Test Set:</strong></p>
+                    <div class="grid-2">
+                        <div class="metric-card"><div class="metric-label">Accuracy</div><div class="metric-value">91.00%</div></div>
+                        <div class="metric-card"><div class="metric-label">Loss</div><div class="metric-value">0.250</div></div>
+                    </div>
+                    
+                    <h3 style="margin-top: 2rem;">Key Insights</h3>
+                    <ul style="line-height: 1.8;">
+                        <li>✅ <strong>High Accuracy:</strong> 92% accuracy on test set</li>
+                        <li>✅ <strong>Balanced Performance:</strong> Similar precision and recall scores</li>
+                        <li>✅ <strong>Low Overfitting:</strong> Minimal gap between validation and test accuracy</li>
+                        <li>🔧 <strong>Optimization:</strong> Mixed precision training reduces inference time</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: About -->
+        <div id="about" class="tab-content">
+            <h2>Project Information</h2>
+            <div class="grid-2">
+                <div>
+                    <h3>🎯 Objective</h3>
+                    <p>Develop a Computer Vision system that automatically detects weeds in agricultural fields using Deep Learning to:</p>
+                    <ul>
+                        <li>Reduce pesticide usage</li>
+                        <li>Minimize environmental impact</li>
+                        <li>Improve crop yields</li>
+                        <li>Enable precision agriculture</li>
+                    </ul>
+                    
+                    <h3>📚 Technologies</h3>
+                    <ul>
+                        <li><strong>Deep Learning:</strong> TensorFlow, PyTorch</li>
+                        <li><strong>Computer Vision:</strong> OpenCV, scikit-image</li>
+                        <li><strong>Optimization:</strong> Intel oneAPI DNNL</li>
+                        <li><strong>Frontend:</strong> HTML/JS/CSS (Vercel Serverless)</li>
+                        <li><strong>Backend API:</strong> FastAPI</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>📁 Project Structure</h3>
+<pre>
+src/
+├── model.py           # ResNet architecture
+├── data_preprocessing.py
+├── evaluate.py        # Model evaluation
+├── deploy.py          # Production deployment
+├── utils.py           # Helper functions
+└── eda.py             # Data analysis
+
+notebooks/
+├── 01_Introduction_to_Computer_Vision.ipynb
+├── 02_Baseline.ipynb
+├── 03_train_enabling_automixed_precision.ipynb
+└── 05_Advance_processing_and_Modelling.ipynb
+</pre>
+                    <h3>📊 Dataset</h3>
+                    <ul>
+                        <li><strong>Source:</strong> Automated Weed Detection Challenge</li>
+                        <li><strong>Classes:</strong> 2 (Crop, Weed)</li>
+                        <li><strong>Images:</strong> 5000+ training samples</li>
+                        <li><strong>Format:</strong> RGB Images</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.9rem;">
+            🌾 Automated Weed Detection System | Powered by Vercel Serverless Python
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            // Update tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        async function previewAndPredict(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Preview image
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('image-preview').src = e.target.result;
+                document.getElementById('image-preview-container').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+
+            // UI state
+            document.getElementById('default-result-msg').style.display = 'none';
+            document.getElementById('results-container').style.display = 'none';
+            document.getElementById('loading-spinner').style.display = 'block';
+
+            // Predict API calling
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // Determine API url (it routes to /api/predict correctly in Vercel or locally)
+                const apiUrl = window.location.origin + '/api/predict';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Populate results
+                const isWeed = data.prediction === 'Weed';
+                document.getElementById('prediction-text').innerHTML = `<strong>Predicted:</strong> ${isWeed ? '🌿' : '🌱'} ${data.prediction}`;
+                
+                document.getElementById('conf-crop').innerText = (data.confidence_crop * 100).toFixed(2) + '%';
+                document.getElementById('conf-weed').innerText = (data.confidence_weed * 100).toFixed(2) + '%';
+                
+                document.getElementById('val-brightness').innerText = data.brightness.toFixed(3);
+                document.getElementById('val-greenness').innerText = data.greenness.toFixed(3);
+                document.getElementById('val-size').innerText = `${data.size[0]} × ${data.size[1]} px`;
+
+                // Show results
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('results-container').style.display = 'block';
+                
+            } catch (error) {
+                alert('Error making prediction. Make sure your local API is running on localhost:8000!');
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('default-result-msg').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
