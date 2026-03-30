@@ -379,37 +379,50 @@
                     <div class="loader" id="loading-spinner"></div>
                     
                     <div id="results-container" style="display: none;">
-                        <div class="success-box" id="prediction-text">
-                            <strong>Predicted:</strong> 🌱 Crop
+                        <div class="success-box" id="prediction-text" style="font-size: 1.1rem; line-height: 1.5;">
+                            <strong>Status:</strong> Determining...
                         </div>
                         
-                        <h3>Confidence Scores</h3>
+                        <h3>Detection Summary</h3>
                         <div class="grid-2" style="margin-bottom: 1.5rem;">
-                            <div class="metric-card">
-                                <div class="metric-label">Crop Confidence</div>
-                                <div class="metric-value" id="conf-crop">0.00%</div>
+                            <div class="metric-card" style="border-color: #4CAF50;">
+                                <div class="metric-label" style="color: #4CAF50;">Crops Detected</div>
+                                <div class="metric-value" id="count-crop">0</div>
                             </div>
-                            <div class="metric-card">
-                                <div class="metric-label">Weed Confidence</div>
-                                <div class="metric-value" id="conf-weed">0.00%</div>
+                            <div class="metric-card" style="border-color: #FF3333;">
+                                <div class="metric-label" style="color: #FF3333;">Weeds Detected</div>
+                                <div class="metric-value" id="count-weed">0</div>
                             </div>
                         </div>
                         
-                        <h3>Image Analysis</h3>
+                        <h3>Image Specs</h3>
                         <table class="details-table">
                             <tr>
-                                <th>Brightness</th>
-                                <td id="val-brightness">0.000</td>
-                            </tr>
-                            <tr>
-                                <th>Greenness</th>
+                                <th>Green Pixel Ratio</th>
                                 <td id="val-greenness">0.000</td>
                             </tr>
                             <tr>
-                                <th>Image Size</th>
+                                <th>Image Resolution</th>
                                 <td id="val-size">0x0 px</td>
                             </tr>
                         </table>
+
+                        <h3 style="margin-top: 1.5rem;">Per-Plant Analysis</h3>
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--container-bg);">
+                            <table class="details-table" id="detections-table" style="margin-top: 0;">
+                                <thead>
+                                    <tr>
+                                        <th>Plant</th>
+                                        <th>Confidence</th>
+                                        <th>Thin %</th>
+                                        <th>Hue</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detections-tbody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -555,6 +568,12 @@ notebooks/
             const file = event.target.files[0];
             if (!file) return;
 
+            // Reset file input value so selecting the SAME image twice still triggers 'onchange'
+            event.target.value = '';
+
+            // Clean up the table while processing
+            document.getElementById('detections-tbody').innerHTML = '';
+            
             // Preview image
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -582,16 +601,56 @@ notebooks/
                 
                 const data = await response.json();
                 
+                // Swap preview to annotated bounding box image
+                if (data.annotated_image) {
+                    document.getElementById('image-preview').src = data.annotated_image;
+                }
+                
                 // Populate results
-                const isWeed = data.prediction === 'Weed';
-                document.getElementById('prediction-text').innerHTML = `<strong>Predicted:</strong> ${isWeed ? '🌿' : '🌱'} ${data.prediction}`;
+                const isWeed = data.weed_count > 0;
+                document.getElementById('prediction-text').innerHTML = `<strong>Status:</strong> ${data.prediction} <br>
+                <small style="color: var(--text-muted);">Located ${data.detections.length} distinct objects.</small>`;
                 
-                document.getElementById('conf-crop').innerText = (data.confidence_crop * 100).toFixed(2) + '%';
-                document.getElementById('conf-weed').innerText = (data.confidence_weed * 100).toFixed(2) + '%';
+                if (isWeed) {
+                    document.getElementById('prediction-text').style.borderColor = '#FF3333';
+                    document.getElementById('prediction-text').style.color = '#FF3333';
+                    document.getElementById('prediction-text').style.backgroundColor = 'rgba(255, 51, 51, 0.1)';
+                } else {
+                    document.getElementById('prediction-text').style.borderColor = '#4CAF50';
+                    document.getElementById('prediction-text').style.color = '#4CAF50';
+                    document.getElementById('prediction-text').style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                }
                 
-                document.getElementById('val-brightness').innerText = data.brightness.toFixed(3);
-                document.getElementById('val-greenness').innerText = data.greenness.toFixed(3);
+                document.getElementById('count-crop').innerText = data.crop_count;
+                document.getElementById('count-weed').innerText = data.weed_count;
+                
+                document.getElementById('val-greenness').innerText = (data.greenness * 100).toFixed(1) + '%';
                 document.getElementById('val-size').innerText = `${data.size[0]} × ${data.size[1]} px`;
+
+                // Populate detection table
+                const tbody = document.getElementById('detections-tbody');
+                tbody.innerHTML = '';
+                
+                if (data.detections && data.detections.length > 0) {
+                    data.detections.forEach((det, idx) => {
+                        const tr = document.createElement('tr');
+                        const isDetWeed = det.class === 'Weed';
+                        const emoji = isDetWeed ? '\u274c' : '\u2705';
+                        const color = isDetWeed ? '#FF3333' : '#4CAF50';
+                        const f = det.features || {};
+                        
+                        tr.innerHTML = `
+                            <td style="color: ${color}; font-weight: bold;">${emoji} ${det.class} #${idx+1}</td>
+                            <td>${(det.confidence * 100).toFixed(1)}%</td>
+                            <td>${f.thin_ratio !== undefined ? (f.thin_ratio * 100).toFixed(0) + '%' : '-'}</td>
+                            <td>${f.hue !== undefined ? f.hue : '-'}</td>
+                            <td style="color: ${f.score > 0.1 ? '#FF3333' : '#4CAF50'}; font-weight: bold;">${f.score !== undefined ? f.score : '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No plants found</td></tr>';
+                }
 
                 // Show results
                 document.getElementById('loading-spinner').style.display = 'none';
